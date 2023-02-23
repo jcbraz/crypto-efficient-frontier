@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pandas_datareader as pdr
 import matplotlib.pyplot as plt
-import datetime
 import os
 
 client = Client(os.environ.get("BINANCE_API_KEY"),
@@ -51,17 +50,23 @@ def parseMarketData():
     return mean_return, annualized_volatility
 
 
+def walletRentability(frames: dict, weights: dict):
 
-# def marketWallet(weights: list, start, end):
-#     lowestPresene = weights.min()
-#     highestPresence = weights.max()
+    expectedReturn = 0
+    for key in weights.keys():
+        expectedReturn += weights[key]*(frames[key])[0]
+
+    return expectedReturn
+
+
+
     
 
-# # assets = ['ETHBUSD','MATICBUSD']
-# weights = np.array([0.5,0.5])
+assets = ['LDOBUSD','OPBUSD']
+weights = {'LDOBUSD': 0.8, 'OPBUSD': 0.2 }
 # # start = datetime.datetime(2018, 1, 1)
 # # end = datetime.datetime(2023, 1, 1)
 
 
-# print(getData(assets, '1w', '1 Jan, 2018', '1 Jan, 2023'))
-# print(marketWallet(weights,datetime.datetime(2018,1,1),datetime.datetime.now()))
+data = getData(assets, '1w', '1 Feb, 2023', '22 Feb, 2023')
+print(walletRentability(data, weights))
