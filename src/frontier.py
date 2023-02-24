@@ -1,12 +1,17 @@
 from binance.client import Client
 import numpy as np
 import pandas as pd
-import pandas_datareader as pdr
-import matplotlib.pyplot as plt
 import os
+import requests
 
+# Binance API
+url = 'https://api.binance.com/api/v3/exchangeInfo'
+response = requests.get(url)
+exchange_info = response.json()
+trading_pairs = [symbol['symbol'] for symbol in exchange_info['symbols']]
 client = Client(os.environ.get("BINANCE_API_KEY"),
-                    os.environ.get("BINANCE_API_SECRET"))
+                os.environ.get("BINANCE_API_SECRET"))
+
 
 def getData(assets: list, interval: str, start: str, end: str):
 
@@ -25,9 +30,9 @@ def getData(assets: list, interval: str, start: str, end: str):
 
         df['close'] = pd.to_numeric(df['close'])
         df['daily_return'] = df['close'].pct_change()
-        mean_return = np.round(np.mean(df['daily_return']),4)
+        mean_return = np.round(np.mean(df['daily_return']), 4)
         std_return = np.std(df['daily_return'])
-        annualized_volatility = np.round(std_return * np.sqrt(365),4)
+        annualized_volatility = np.round(std_return * np.sqrt(365), 4)
 
         returns.append(mean_return)
         returns.append(annualized_volatility)
@@ -41,9 +46,9 @@ def parseMarketData():
     df['Close'] = pd.to_numeric(df['Close'])
     df['daily_return'] = df['Close'].pct_change()
 
-    mean_return = np.round(np.mean(df['daily_return']),4)
+    mean_return = np.round(np.mean(df['daily_return']), 4)
     std_return = np.std(df['daily_return'])
-    annualized_volatility = np.round(std_return * np.sqrt(365),4)
+    annualized_volatility = np.round(std_return * np.sqrt(365), 4)
 
     return mean_return, annualized_volatility
 
@@ -58,17 +63,52 @@ def walletStats(frames: dict, weights: dict):
 
     return expectedReturn, expectedVolatility
 
-    
 
-    
+def menu():
 
-assets = ['LDOBUSD','OPBUSD']
-weights = {'LDOBUSD': 0.8, 'OPBUSD': 0.2 }
+    requestData = True
+
+    assets = []
+    weights = {}
+
+    while requestData:
+
+        asset = ""
+        while asset not in trading_pairs:
+            asset = str(input("Enter a pair: "))
+            if asset not in trading_pairs:
+                print("Invalid asset")
+        assets.append(asset)
+
+        weight = -1
+        while weight < 0 or weight > 1:
+            weight = float(input("Enter the asset weight: "))
+            if weight < 0 or weight > 1:
+                print("Invalid weight")
+            weights[asset] = weight
+            totalWeight = 0  # initialize totalWeight to 0
+            for key in weights.keys():
+                totalWeight += weights[key]
+            if totalWeight > 1:
+                print("Total weight must be less than 1")
+                del weights[asset]
+                weight = -1
+
+        answer = ""
+        while answer.lower() != 'y' and answer.lower() != 'n':
+            answer = str(input("Do you want to add another asset? (y/n): "))
+            if answer.lower() != 'y' and answer.lower() != 'n':
+                print("Invalid answer")
+
+        if answer.lower() == 'n':
+            requestData = False
+
+    data = getData(assets, '1w', '1 Feb, 2023', '22 Feb, 2023')
+    marketData = parseMarketData()
+    expectedReturn, expectedVolatility = walletStats(data, weights)
+
+    print(
+        f"Portfolio Expected Returns:\n{np.round(expectedReturn,4)}\nPortfolio Expected Volatility:\n:{np.round(expectedVolatility,4)}\nComparing with the market:\nMarket Expected Returns:\n{np.round(marketData[0],4)}\nMarket Expected Volatility:\n{np.round(marketData[1],4)}")
 
 
-data = getData(assets, '1w', '1 Feb, 2023', '22 Feb, 2023')
-marketData = parseMarketData()
-expectedReturn, expectedVolatility = walletStats(data, weights)
-# print(expectedReturn, expectedVolatility)
-# print(isInEfficientFrontier([marketData[0]], [marketData[1]], expectedReturn, expectedVolatility))
-
+menu()
