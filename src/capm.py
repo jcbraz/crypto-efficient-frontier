@@ -1,12 +1,11 @@
-from binance.client import Client
 import numpy as np
 import pandas as pd
-import pandas_datareader as pdr
-import matplotlib.pyplot as plt
+from binance.client import Client
 import os
 
 client = Client(os.environ.get("BINANCE_API_KEY"),
-                    os.environ.get("BINANCE_API_SECRET"))
+                os.environ.get("BINANCE_API_SECRET"))
+
 
 def getData(assets: list, interval: str, start: str, end: str):
 
@@ -25,9 +24,9 @@ def getData(assets: list, interval: str, start: str, end: str):
 
         df['close'] = pd.to_numeric(df['close'])
         df['daily_return'] = df['close'].pct_change()
-        mean_return = np.round(np.mean(df['daily_return']),4)
+        mean_return = np.round(np.mean(df['daily_return']), 4)
         std_return = np.std(df['daily_return'])
-        annualized_volatility = np.round(std_return * np.sqrt(365),4)
+        annualized_volatility = np.round(std_return * np.sqrt(365), 4)
 
         returns.append(mean_return)
         returns.append(annualized_volatility)
@@ -41,34 +40,27 @@ def parseMarketData():
     df['Close'] = pd.to_numeric(df['Close'])
     df['daily_return'] = df['Close'].pct_change()
 
-    mean_return = np.round(np.mean(df['daily_return']),4)
+    mean_return = np.round(np.mean(df['daily_return']), 4)
     std_return = np.std(df['daily_return'])
-    annualized_volatility = np.round(std_return * np.sqrt(365),4)
+    annualized_volatility = np.round(std_return * np.sqrt(365), 4)
 
     return mean_return, annualized_volatility
 
 
-def walletStats(frames: dict, weights: dict):
+def calculateBeta(frames: dict, marketRentability: float, marketVolatility: float) -> dict:
 
-    expectedReturn = 0
-    expectedVolatility = 0
-    for key in weights.keys():
-        expectedReturn += weights[key]*(frames[key])[0]
-        expectedVolatility += weights[key]*(frames[key])[1]
+    betas = {}
 
-    return expectedReturn, expectedVolatility
+    for asset, returns in frames.items():
+        asset_mean_return = returns[0]
+        covariance = np.cov(asset_mean_return, marketRentability)[0][1]
+        beta = covariance / marketVolatility
+        betas[asset] = beta
 
-    
-
-    
-
-assets = ['LDOBUSD','OPBUSD']
-weights = {'LDOBUSD': 0.8, 'OPBUSD': 0.2 }
+    return betas
 
 
-data = getData(assets, '1w', '1 Feb, 2023', '22 Feb, 2023')
-marketData = parseMarketData()
-expectedReturn, expectedVolatility = walletStats(data, weights)
-# print(expectedReturn, expectedVolatility)
-# print(isInEfficientFrontier([marketData[0]], [marketData[1]], expectedReturn, expectedVolatility))
-
+assets = ['LDOBUSD', 'ETHBUSD']
+data = getData(assets, '1w', '1 Jan, 2021', '22 Feb, 2023')
+rent, vol = parseMarketData()
+print(calculateBeta(data, rent, vol))
